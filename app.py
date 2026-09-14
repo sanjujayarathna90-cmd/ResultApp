@@ -1,3 +1,73 @@
+import base64
+import os
+import time
+import streamlit as st
+
+# ==========================================
+# 1. TOP HEADER WITH SCHOOL LOGO (LEFT) & TITLE
+# ==========================================
+LOGO_PATH = os.path.join("images", "logo.png")  # Adjust filename if needed
+
+col_logo, col_title = st.columns([1, 5])
+
+with col_logo:
+    if os.path.exists(LOGO_PATH):
+        st.image(LOGO_PATH, use_container_width=True)
+
+with col_title:
+    st.title("R/ Theppanawa Kumara Maha Vidyalaya")
+    st.caption("School Management & Evaluation Portal")
+
+st.markdown("---")
+
+# ==========================================
+# 2. ROTATING TRANSPARENT BACKGROUND SLIDESHOW
+# ==========================================
+BG_DIR = os.path.join("images", "Backgrounds")
+VALID_EXTS = ('.jpg', '.jpeg', '.png', '.webp')
+
+if os.path.exists(BG_DIR):
+    bg_images = [
+        os.path.join(BG_DIR, f) 
+        for f in os.listdir(BG_DIR) 
+        if f.lower().endswith(VALID_EXTS)
+    ]
+    
+    if bg_images:
+        # Track active background index in session state
+        if "bg_index" not in st.session_state:
+            st.session_state.bg_index = 0
+            st.session_state.last_bg_update = time.time()
+
+        # Check if 60 seconds (1 minute) have passed
+        current_time = time.time()
+        if current_time - st.session_state.last_bg_update > 60:
+            st.session_state.bg_index = (st.session_state.bg_index + 1) % len(bg_images)
+            st.session_state.last_bg_update = current_time
+            st.rerun()
+
+        # Convert image to base64 string for HTML/CSS injection
+        current_bg = bg_images[st.session_state.bg_index]
+        with open(current_bg, "rb") as image_file:
+            encoded_string = base64.b64encode(image_file.read()).decode()
+
+        # Inject CSS for semi-transparent full-page background
+        bg_css = f"""
+        <style>
+        .stApp {{
+            background: linear-gradient(
+                rgba(255, 255, 255, 0.88), 
+                rgba(255, 255, 255, 0.88)
+            ), 
+            url("data:image/png;base64,{encoded_string}");
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            background-repeat: no-repeat;
+        }}
+        </style>
+        """
+        st.markdown(bg_css, unsafe_allow_html=True)
 import os
 import io
 import zipfile
@@ -159,9 +229,9 @@ if navigation == "🎓 Result Sheet Generator":
         st.markdown("### 🏫 School Gallery")
         img_bytes = load_local_bytes(RIGHT_BANNER_IMAGE)
         if img_bytes:
-            st.image(img_bytes, use_column_width=True, caption="R/ Theppanawa KMV Campus")
+            st.image(img_bytes, use_container_width=True, caption="R/ Theppanawa KMV Campus")
         else:
-            st.image("https://images.unsplash.com/photo-1541829070764-84a7d30dd3f3?w=600", use_column_width=True, caption="R/ Theppanawa KMV Premises")
+            st.image("https://images.unsplash.com/photo-1541829070764-84a7d30dd3f3?w=600", use_container_width=True, caption="R/ Theppanawa KMV Premises")
 
     st.markdown("---")
 
@@ -525,3 +595,63 @@ elif navigation == "📖 School History":
     """)
     st.markdown("---")
     st.markdown(f"📍 Map Location: **[To Teppanawa Kumara Maha Vidyalaya - Bing Maps]({BING_MAPS_URL})**")
+# ==========================================
+# SCHOOL PHOTO GALLERY (CATEGORIZED)
+# ==========================================
+import os
+
+st.markdown("---")
+st.title("📸 School Photo Gallery")
+
+BASE_IMAGE_DIR = "images"
+VALID_EXTENSIONS = ('.jpg', '.jpeg', '.png', '.webp')
+
+if os.path.exists(BASE_IMAGE_DIR):
+    # Find all category subfolders dynamically
+    categories = [
+        d for d in os.listdir(BASE_IMAGE_DIR)
+        if os.path.isdir(os.path.join(BASE_IMAGE_DIR, d))
+    ]
+    
+    category_list = ["All Categories"] + sorted(categories)
+    
+    # Category selection bar
+    selected_category = st.radio(
+        "Filter by Category:", 
+        category_list, 
+        horizontal=True
+    )
+
+    images_to_show = []
+    
+    # Load images based on category selection
+    if selected_category == "All Categories":
+        for root, _, files in os.walk(BASE_IMAGE_DIR):
+            for file in files:
+                if file.lower().endswith(VALID_EXTENSIONS):
+                    images_to_show.append((os.path.join(root, file), file))
+    else:
+        category_path = os.path.join(BASE_IMAGE_DIR, selected_category)
+        if os.path.exists(category_path):
+            for file in os.listdir(category_path):
+                if file.lower().endswith(VALID_EXTENSIONS):
+                    images_to_show.append((os.path.join(category_path, file), file))
+
+    # Display images in a 3-column grid
+    if images_to_show:
+        st.caption(f"Showing **{len(images_to_show)}** photos")
+        num_cols = 3
+        cols = st.columns(num_cols)
+        
+        for idx, (img_path, img_name) in enumerate(images_to_show):
+            col = cols[idx % num_cols]
+            with col:
+                st.image(
+                    img_path, 
+                    caption=img_name, 
+                    use_container_width=True
+                )
+    else:
+        st.info("No images found in the selected category subfolder.")
+else:
+    st.warning("`images/` directory not found. Please create it and add photos.")
