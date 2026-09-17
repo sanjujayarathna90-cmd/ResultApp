@@ -79,12 +79,13 @@ if os.path.exists(BG_DIR):
         with open(current_bg, "rb") as image_file:
             encoded_string = base64.b64encode(image_file.read()).decode()
 
+        # UPDATED: Lowered white overlay to 0.43 (50% more image visibility)
         bg_css = f"""
         <style>
         .stApp {{
             background: linear-gradient(
-                rgba(255, 255, 255, 0.93), 
-                rgba(255, 255, 255, 0.93)
+                rgba(255, 255, 255, 0.43), 
+                rgba(255, 255, 255, 0.43)
             ), 
             url("data:image/png;base64,{encoded_string}");
             background-size: cover;
